@@ -1,5 +1,8 @@
-import numpy as np
+from mpc.Vessel import Vessel
+from mpc.Controller import Controller
 
-if __name__ == "__main__":
-    print("hello")
+vessel = Vessel()
+ctrl = Controller(vessel)
+ctrl.run()
+
 
