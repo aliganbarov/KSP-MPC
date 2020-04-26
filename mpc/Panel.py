@@ -10,7 +10,7 @@ class Panel:
         self.texts = {}
 
     def init_panel(self, status):
-        y_pos = 10
+        y_pos = 0
         for key in status:
             text = key + ": " + str(status[key])
             self.texts[key] = self.add_text(text, y_pos)
@@ -18,7 +18,7 @@ class Panel:
 
     def update_panel(self, status):
         for key in status:
-            self.texts[key].content = key + ": " + str(status[key])
+            self.texts[key].content = key + ": " + str(round(status[key], 2))
 
     def add_text(self, text, position):
         text = self.panel.add_text(text)
