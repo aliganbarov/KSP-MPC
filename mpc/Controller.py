@@ -25,7 +25,8 @@ class Controller:
                 self.vessel.next_stage()
             status = self.vessel.get_status()
             status['Error'] = status['Altitude'] - target_alt
+            print(status)
             self.panel.update_panel(status)
 
             self.vessel.set_throttle(pid_hover.get_throttle(status['Altitude']))
-
+            time.sleep(.1)

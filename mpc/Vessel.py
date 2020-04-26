@@ -6,6 +6,7 @@ class Vessel:
             'Orbit speed': 0.,
             'Surface speed': 0.,
             'Altitude': 0.,
+            'Error': 0.,
         }
         self.conn = conn
         self.vessel = self.conn.space_center.active_vessel
