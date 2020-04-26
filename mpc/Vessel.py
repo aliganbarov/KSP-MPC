@@ -24,9 +24,9 @@ class Vessel:
         self.stage = self.stages[1]
 
     def update_status(self):
-        self.status['Orbit speed'] = self.orb_speed()
-        self.status['Surface speed'] = self.srf_speed()
-        self.status['Altitude'] = self.altitude()
+        self.status['Orbit speed'] = round(self.orb_speed(), 2)
+        self.status['Surface speed'] = round(self.srf_speed(), 2)
+        self.status['Altitude'] = round(self.altitude(), 2)
 
     def get_status(self):
         self.update_status()

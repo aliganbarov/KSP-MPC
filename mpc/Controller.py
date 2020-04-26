@@ -24,7 +24,7 @@ class Controller:
             if self.vessel.stage == 'Launch':
                 self.vessel.next_stage()
             status = self.vessel.get_status()
-            status['Error'] = status['Altitude'] - target_alt
+            status['Error'] = round(status['Altitude'] - target_alt, 2)
             print(status)
             self.panel.update_panel(status)
 

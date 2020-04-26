@@ -22,14 +22,14 @@ class Panel:
 
     def add_text(self, text, position):
         text = self.panel.add_text(text)
-        text.rect_transform.size = (325., 30.)
-        text.rect_transform.position = (-20, position)
+        text.rect_transform.size = (200., 30.)
+        text.rect_transform.position = (10, position)
         text.color = (1, 1, 1)
         text.size = 18
         return text
 
     def position_panel(self):
         rect = self.panel.rect_transform
-        rect.size = (400, 200)
+        rect.size = (200, 200)
         screen_size = self.canvas.rect_transform.size
-        rect.position = (200. - (screen_size[0]/2.0), 0)
+        rect.position = (150. - (screen_size[0]/2.0), 0)
