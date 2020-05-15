@@ -1,4 +1,3 @@
-import math
 
 
 class Vessel:
@@ -21,16 +20,20 @@ class Vessel:
         self.drag = conn.add_stream(getattr, self.vessel.flight(), 'drag')
         self.yaw = conn.add_stream(getattr, self.vessel.control, 'yaw')
         self.pitch = conn.add_stream(getattr, self.vessel.control, 'pitch')
-        self.stages = ['Launch', 'Ascending', 'Descending']
-        self.stage = self.stages[0]
+        self.mass = conn.add_stream(getattr, self.vessel, 'mass')
+        self.stage = 2
 
         # cheating
         self.vessel.auto_pilot.engage()
         self.vessel.auto_pilot.target_direction = (1, 0, 0)
 
     def next_stage(self):
-        self.vessel.control.activate_next_stage()
-        self.stage = self.stages[1]
+        if self.stage == 0:
+            self.vessel.control.activate_next_stage()
+        self.stage += 1
+
+    def get_stage(self):
+        return self.stage
 
     def update_status(self):
         self.status['Altitude'] = self.altitude()
@@ -40,7 +43,9 @@ class Vessel:
         self.status['Direction Z'] = direction[0]
         self.status['Throttle'] = self.throttle()
         self.status['Thrust'] = self.thrust()
-        self.status['Drag'] = self.drag()
+        self.status['Drag X'] = self.drag()[2]
+        self.status['Drag Y'] = self.drag()[1]
+        self.status['Drag Z'] = self.drag()[0]
         self.status['Vertical Speed'] = self.vertical_speed()
         self.status['Yaw'] = self.yaw()
         self.status['Pitch'] = self.pitch()
@@ -62,7 +67,7 @@ class Vessel:
         self.vessel.control.roll = roll
 
     def get_mass(self):
-        return self.vessel.mass
+        return self.mass()
 
     def get_available_thrust(self):
         return self.vessel.max_thrust

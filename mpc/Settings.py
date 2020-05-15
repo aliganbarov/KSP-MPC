@@ -8,9 +8,3 @@ class Settings:
     # Kerbin gravity constant
     G = 6.67408e-11
 
-    def __init__(self):
-        self.LAUNCH = 0
-        self.ASCEND = 1
-        self.DESCEND = 2
-        self.LANDED = 3
-
