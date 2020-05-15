@@ -59,13 +59,22 @@ class MPC:
 
     def model_validation(self, start, end, sim_time):
         data = []
-        throttle_values = np.linspace(start, end, sim_time / self.dt)
-        for throttle in throttle_values:
+        # generate throttle values for each timestamp
+        throttle_values = np.linspace(start, end, int(sim_time / self.dt))
+        model_state = []
+        for timestamp in range(int(sim_time/self.dt)):
             actual_state = self.vessel.get_status()
+            # every time horizon is reached, update simulation input values with actual state
+            if self.horizon == 0:
+                model_input = [actual_state['Altitude'], actual_state['Vertical Velocity']]
+            elif timestamp % self.horizon == 0:
+                model_input = [actual_state['Altitude'], actual_state['Vertical Velocity']]
+            else:
+                model_input = [model_state[2], model_state[3]]
             # get the model prediction
-            model_state = self.model([actual_state['Altitude'], actual_state['Vertical Velocity']], throttle, debug=True)
+            model_state = self.model(model_input, throttle_values[timestamp], debug=True)
             # set the rockets throttle
-            self.vessel.set_throttle(throttle)
+            self.vessel.set_throttle(throttle_values[timestamp])
             # wait for dt
             time.sleep(self.dt)
             # read actual value
