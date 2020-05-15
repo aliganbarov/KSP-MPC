@@ -56,13 +56,13 @@ class MPC:
         for throttle in throttle_values:
             actual_state = self.vessel.get_status()
             # get the model prediction
-            model_state = self.model([actual_state['Altitude'], actual_state['Vertical Speed']], throttle)
+            model_state = self.model([actual_state['Altitude'], actual_state['Vertical Velocity']], throttle)
             # set the rockets throttle
             self.vessel.set_throttle(throttle)
             # wait for dt
             time.sleep(self.dt)
             # read actual value
             actual_state = self.vessel.get_status()
-            data.append([model_state[0], model_state[1], actual_state['Altitude'], actual_state['Vertical Speed']])
+            data.append([model_state[0], model_state[1], actual_state['Altitude'], actual_state['Vertical Velocity']])
         return data
 

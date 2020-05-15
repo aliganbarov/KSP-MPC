@@ -48,7 +48,7 @@ class Controller:
             status = self.vessel.get_status()
             if status['Altitude'] < 3 and self.vessel.get_stage() == 2:
                 return 0
-            current_state = [status['Altitude'], status['Vertical Speed']]
+            current_state = [status['Altitude'], status['Vertical Velocity']]
             print("Current state")
             print(current_state)
             t1 = datetime.now()
@@ -67,7 +67,7 @@ class Controller:
             self.vessel.set_throttle(new_throttle)
             # self.vessel.set_pitch(new_pitch)
             # self.vessel.set_yaw(new_yaw)
-            # self.write_log(new_throttle, status)
+            self.write_log(new_throttle, status)
             self.display_errors(status, target_alt, target_direction_x, target_direction_y)
 
     def write_log(self, inp_throttle, status):
