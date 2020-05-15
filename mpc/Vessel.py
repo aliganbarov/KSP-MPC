@@ -21,7 +21,7 @@ class Vessel:
         self.yaw = conn.add_stream(getattr, self.vessel.control, 'yaw')
         self.pitch = conn.add_stream(getattr, self.vessel.control, 'pitch')
         self.mass = conn.add_stream(getattr, self.vessel, 'mass')
-        self.stage = 2
+        self.stage = 0
 
         # cheating
         self.vessel.auto_pilot.engage()

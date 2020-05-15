@@ -22,7 +22,10 @@ class MPC:
         m = self.m
         W = Settings.G * m * Settings.M / (Settings.R + y_t) ** 2
         # compute acceleration ma = (T - D - W)
-        a_t = 1/m * (T + D - W)
+        if v_t > 0:
+            a_t = 1/m * (T - D - W)
+        else:
+            a_t = 1/m * (T + D - W)
         # compute the vertical speed
         v_t_1 = v_t + a_t * self.dt
         # compute new altitude
@@ -35,8 +38,9 @@ class MPC:
         cost = 0
         for i in range(self.horizon):
             state = self.model(state, u[i])
-            cost += 0.065 * np.square(target_state[0] - state[0])
-            cost += np.square(target_state[1] - state[1])
+            cost += np.abs(target_state[0] - state[0])
+            # 0.065
+            cost += np.abs(target_state[1] - state[1])
         return cost
 
     def get_optimal_throttle(self, current_state, target_state):

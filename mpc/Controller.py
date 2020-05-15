@@ -27,7 +27,7 @@ class Controller:
     def run(self):
         status = self.vessel.get_status()
         target_alt = 500
-        target_vel = 0
+        target_vel = 50
         target_direction_y = 0
         target_direction_x = 0
         # pid_hover = PID(.25, -.03, .01, -0.55, status['Altitude'], target_alt)
@@ -39,10 +39,10 @@ class Controller:
             self.vessel.next_stage()
             self.vessel.set_throttle(1)
             time.sleep(1)
-        throttle_mpc = MPC(self.vessel, horizon=15)
+        throttle_mpc = MPC(self.vessel, horizon=5)
         times = []
         while True:
-            if self.vessel.altitude() > 100:
+            if self.vessel.altitude() > 500:
                 target_alt = 5
                 self.vessel.next_stage()
             status = self.vessel.get_status()
@@ -54,7 +54,6 @@ class Controller:
             t1 = datetime.now()
             new_throttle = throttle_mpc.get_optimal_throttle(current_state, [target_alt, target_vel])
             t2 = datetime.now()
-            print("Time: ", (t2-t1).total_seconds())
             # new_pitch = pid_pitch.get_val(status['Direction Y'])
             # new_yaw = pid_yaw.get_val(status['Direction X'])
             print({
@@ -67,7 +66,7 @@ class Controller:
             self.vessel.set_throttle(new_throttle)
             # self.vessel.set_pitch(new_pitch)
             # self.vessel.set_yaw(new_yaw)
-            self.write_log(new_throttle, status)
+            # self.write_log(new_throttle, status)
             self.display_errors(status, target_alt, target_direction_x, target_direction_y)
 
     def write_log(self, inp_throttle, status):
