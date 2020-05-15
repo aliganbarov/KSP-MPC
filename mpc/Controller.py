@@ -20,7 +20,7 @@ class Controller:
             'Direction Y Error': 0,
         }
         self.panel.init_panel(self.error_status)
-        self.log_filename = 'logs/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
+        self.log_filename = 'logs/general/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
         init_status = self.vessel.get_status()
         self.logs = pd.DataFrame(columns=['Input Throttle'] + [x for x in init_status.keys()])
 
@@ -39,7 +39,7 @@ class Controller:
             self.vessel.next_stage()
             self.vessel.set_throttle(1)
             time.sleep(1)
-        throttle_mpc = MPC(self.vessel, horizon=5)
+        throttle_mpc = MPC(self.vessel, horizon=5, dt=1)
         times = []
         while True:
             if self.vessel.altitude() > 500:
@@ -80,16 +80,25 @@ class Controller:
         self.panel.update_panel(self.error_status)
 
     def run_model_validation(self):
+        log_filename = 'logs/model_validation/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
         if self.vessel.get_stage() == 0:
             self.vessel.next_stage()
             self.vessel.set_throttle(1)
             time.sleep(1)
-
-        throttle_mpc = MPC(self.vessel, horizon=10)
-        data = throttle_mpc.model_validation(0, 1)
-        print(pd.DataFrame(data, columns=['Model Altitude', 'Model Speed', 'Actual Altitude', 'Actual Speed']))
-        data = throttle_mpc.model_validation(0, 0)
-        print(pd.DataFrame(data, columns=['Model Altitude', 'Model Speed', 'Actual Altitude', 'Actual Speed']))
-        data = throttle_mpc.model_validation(0.2, 0)
-        print(pd.DataFrame(data, columns=['Model Altitude', 'Model Speed', 'Actual Altitude', 'Actual Speed']))
+        df = pd.DataFrame(columns=['dt', 'Input Altitude', 'Input Velocity', 'Model Altitude', 'Model Velocity',
+                                   'Model Thrust', 'Model Drag', 'Model Mass', 'Model Weight', 'Model Acceleration',
+                                   'Actual Altitude', 'Actual Velocity', 'Actual Thrust', 'Actual Drag',
+                                   'Actual Mass'])
+        throttle_mpc = MPC(self.vessel, horizon=2, dt=0.1)
+        dts = [0.1, 0.5, 1]
+        inputs = [(0, 1, 10), (0, 0, 10), (0, 1, 10), (0, 0, 5)]
+        for dt in dts:
+            throttle_mpc = MPC(self.vessel, horizon=2, dt=dt)
+            for inp in inputs:
+                print(dt)
+                print(inp)
+                data = throttle_mpc.model_validation(inp[0], inp[1], inp[2])
+                for item in data:
+                    df.loc[len(df)] = [dt] + item
+        df.to_csv(log_filename, index=False)
 
