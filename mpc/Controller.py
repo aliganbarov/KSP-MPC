@@ -12,7 +12,9 @@ class Controller:
 
     def __init__(self):
         self.conn = krpc.connect()
+        # self.conn.space_center.load('20K')
         self.vessel = Vessel(self.conn)
+        self.vessel.stage = 1
         self.panel = Panel(self.conn)
         self.error_status = {
             'Altitude Error': 0,
@@ -27,7 +29,7 @@ class Controller:
     def run(self):
         status = self.vessel.get_status()
         target_alt = 500
-        target_vel = 50
+        target_vel = 0
         target_direction_y = 0
         target_direction_x = 0
         # pid_hover = PID(.25, -.03, .01, -0.55, status['Altitude'], target_alt)
@@ -35,18 +37,22 @@ class Controller:
         # pid_pitch = PID(0, 10, -5, -5, status['Direction Y'], target_direction_y)
         pid_yaw = PID(0, -1, .5, -5, status['Direction X'], target_direction_x)
         pid_pitch = PID(0, 1, -.5, -5, status['Direction Y'], target_direction_y)
+        '''
         if self.vessel.get_stage() == 0:
             self.vessel.next_stage()
             self.vessel.set_throttle(1)
             time.sleep(1)
-        throttle_mpc = MPC(self.vessel, horizon=5, dt=1)
+        '''
+        throttle_mpc = MPC(self.vessel, horizon=10, dt=0.5)
         times = []
         while True:
-            if self.vessel.altitude() > 500:
-                target_alt = 5
+            if self.vessel.altitude() > 400 and self.vessel.get_stage() == 1:
+                target_alt = 0
                 self.vessel.next_stage()
             status = self.vessel.get_status()
-            if status['Altitude'] < 3 and self.vessel.get_stage() == 2:
+            if abs(target_alt - status['Altitude']) < 6 and self.vessel.get_stage() == 2:
+                print("Reached Target. Altitude: " + str(status['Altitude']))
+                self.vessel.set_throttle(0)
                 return 0
             current_state = [status['Altitude'], status['Vertical Velocity']]
             print("Current state")
@@ -84,26 +90,22 @@ class Controller:
         df = pd.DataFrame(columns=['horizon', 'dt', 'Input Altitude', 'Input Velocity', 'Model Altitude', 'Model Velocity',
                                    'Model Thrust', 'Model Drag', 'Model Mass', 'Model Weight', 'Model Acceleration',
                                    'Actual Altitude', 'Actual Velocity', 'Actual Thrust', 'Actual Drag',
-                                   'Actual Mass'])
-        horizons = [0, 5, 10, 15, 20]
-        # dts = [0.1, 0.2, 0.5, 1]
-        dts = [1, 0.5, 0.2, 0.1]
-        inputs = [(0, 1, 10), (0, 0, 10), (0, 1, 10), (0, 0, 5)]
+                                   'Actual Mass', 'Input Throttle'])
+        horizons = [0, 5, 10, 15, 20, 1000]
+        dts = [0.1, 0.2, 0.5, 1]
+        inputs = [(0, 0, 10), (0, 1, 10), (0, 0, 10), (0, 1, 10), (0, 0, 10), (0, 1, 10), (0, 0, 15), (0.3, 0.3, 20)]
         for horizon in horizons:
             for dt in dts:
                 self.conn.space_center.load('launch_stage')
                 self.vessel = Vessel(self.conn)
                 if self.vessel.get_stage() == 0:
                     self.vessel.next_stage()
-                    self.vessel.set_throttle(1)
-                    time.sleep(2)
+                    self.vessel.set_throttle(0.5)
+                    time.sleep(4)
                 throttle_mpc = MPC(self.vessel, horizon=horizon, dt=dt)
-                for inp in inputs:
-                    print('h: ', horizon)
-                    print('t: ', dt)
-                    print('i: ', inp)
-                    data = throttle_mpc.model_validation(inp[0], inp[1], inp[2])
-                    for item in data:
-                        df.loc[len(df)] = [horizon, dt] + item
+                print('h: ', horizon, 't: ', dt)
+                data = throttle_mpc.model_validation(inputs)
+                for item in data:
+                    df.loc[len(df)] = [horizon, dt] + item
         df.to_csv(log_filename, index=False)
 

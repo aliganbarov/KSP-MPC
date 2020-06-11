@@ -20,12 +20,10 @@ class MPC:
         # compute weight mg
         # m = self.vessel.get_mass()
         m = self.m
+        print('mass: ', m)
         W = Settings.G * m * Settings.M / (Settings.R + y_t) ** 2
         # compute acceleration ma = (T - D - W)
-        if v_t > 0:
-            a_t = 1/m * (T - D - W)
-        else:
-            a_t = 1/m * (T + D - W)
+        a_t = 1 / m * (T - np.sign(v_t) * D - W)
         # compute the vertical speed
         v_t_1 = v_t + a_t * self.dt
         # compute new altitude
@@ -41,9 +39,15 @@ class MPC:
         cost = 0
         for i in range(self.horizon):
             state = self.model(state, u[i])
-            cost += np.abs(target_state[0] - state[0])
-            # 0.065
-            cost += np.abs(target_state[1] - state[1])
+            # cost += 0.75 * np.abs(target_state[0] - state[0])
+            # cost += np.abs(target_state[1] - state[1])
+
+            cost += 0.2 * np.square(target_state[0] - state[0])
+            cost += np.square(target_state[1] - state[1])
+            cost += np.square(u[i] * 20)
+            # print(0.2 * np.square(target_state[0] - state[0]))
+            # print(np.square(target_state[1] - state[1]))
+            # print(np.square(u[i] * 10))
         return cost
 
     def get_optimal_throttle(self, current_state, target_state):
@@ -57,10 +61,12 @@ class MPC:
                                     )
         return optimal_throttle.x[0]
 
-    def model_validation(self, start, end, sim_time):
+    def model_validation(self, inputs):
         data = []
         # generate throttle values for each timestamp
-        throttle_values = np.linspace(start, end, int(sim_time / self.dt))
+        throttle_values = [x for inp in inputs for x in np.linspace(inp[0], inp[1], int(inp[2]/self.dt))]
+        # get total simulation time
+        sim_time = sum([inp[2] for inp in inputs])
         model_state = []
         for timestamp in range(int(sim_time/self.dt)):
             actual_state = self.vessel.get_status()
@@ -74,12 +80,16 @@ class MPC:
             # get the model prediction
             model_state = self.model(model_input, throttle_values[timestamp], debug=True)
             # set the rockets throttle
-            self.vessel.set_throttle(throttle_values[timestamp])
+            input_throttle = throttle_values[timestamp]
+            if actual_state['Altitude'] < 200:
+                input_throttle = 1
+            self.vessel.set_throttle(input_throttle)
             # wait for dt
             time.sleep(self.dt)
             # read actual value
             actual_state = self.vessel.get_status()
             data.append(model_state + [actual_state['Altitude'], actual_state['Vertical Velocity'],
-                                       actual_state['Thrust'], actual_state['Drag Z'], self.vessel.get_mass()])
+                                       actual_state['Thrust'], actual_state['Drag Z'], self.vessel.get_mass(),
+                                       input_throttle])
         return data
 

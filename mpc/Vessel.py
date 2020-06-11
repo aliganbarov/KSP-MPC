@@ -14,7 +14,7 @@ class Vessel:
         self.altitude = conn.add_stream(getattr, self.vessel.flight(), 'surface_altitude')
         self.direction = conn.add_stream(getattr, self.vessel.flight(), 'direction')
         self.vertical_velocity = conn.add_stream(getattr, self.vessel.flight(self.vessel.orbit.body.reference_frame),
-                                              'vertical_speed')
+                                                 'vertical_speed')
         self.throttle = conn.add_stream(getattr, self.vessel.control, 'throttle')
         self.thrust = conn.add_stream(getattr, self.vessel, 'thrust')
         self.drag = conn.add_stream(getattr, self.vessel.flight(), 'drag')
