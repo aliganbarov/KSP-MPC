@@ -12,7 +12,7 @@ class Controller:
 
     def __init__(self):
         self.conn = krpc.connect()
-        # self.conn.space_center.load('20K')
+        self.conn.space_center.load('3K')
         self.vessel = Vessel(self.conn)
         self.vessel.stage = 1
         self.panel = Panel(self.conn)
