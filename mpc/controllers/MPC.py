@@ -4,11 +4,12 @@ from scipy.optimize import minimize
 import time
 
 class MPC:
-    def __init__(self, vessel, horizon=5, dt=1):
+    def __init__(self, vessel, horizon=5, dT=1, dt=1):
         self.vessel = vessel
         self.horizon = horizon
         self.available_thrust = self.vessel.get_available_thrust()
         self.dt = dt
+        self.steps = int(np.ceil(dT/dt)) | 1
         self.drag_model = np.poly1d(np.load('models/drag.npy'))
         self.m = self.vessel.get_mass()
         self.max_thrust = self.vessel.get_available_thrust()
@@ -17,7 +18,8 @@ class MPC:
         y_t = prev_state[0]
         v_t = prev_state[1]
         T = self.max_thrust * throttle
-        D = self.drag_model(v_t)
+        # D = self.drag_model(v_t)
+        D = 0.26615243 * v_t ** 2 - 0.4347499 * v_t + 24.01668556
         # compute weight mg
         m = self.m
         W = Settings.G * m * Settings.M / (Settings.R + y_t) ** 2
@@ -36,10 +38,9 @@ class MPC:
     def cost(self, u, init_state, target_state):
         state = init_state
         cost = 0
-        steps = int(self.dt / 0.1)
         for i in range(self.horizon):
-            for k in range(steps):
-                state = self.model(state, u[i], 0.1)
+            for k in range(self.steps):
+                state = self.model(state, u[i], self.dt)
             cost += 0.1 * np.square(target_state[0] - state[0])
             cost += np.square(target_state[1] - state[1])
             cost += np.square(u[i] * 20)
@@ -51,8 +52,7 @@ class MPC:
         optimal_throttle = minimize(self.cost, u, (current_state, target_state),
                                     method='SLSQP',
                                     bounds=bounds,
-                                    tol=1e-2,
-                                    # options={'maxiter': 1, 'ftol': 1}
+                                    tol=1e-4,
                                     )
         return optimal_throttle.x[0]
 

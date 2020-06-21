@@ -7,7 +7,6 @@ ctrl.run()
 
 
 # TODO: sliding target
-# TODO: optimize on other thread. Use the values till another optimization is done
 # TODO: run inner loop of model with dt=0.1
 
 

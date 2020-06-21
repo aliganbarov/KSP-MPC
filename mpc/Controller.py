@@ -12,14 +12,16 @@ class Controller:
 
     def __init__(self):
         self.conn = krpc.connect()
-        self.conn.space_center.load('3K')
+        self.conn.space_center.load('500m')
         self.vessel = Vessel(self.conn)
-        self.vessel.stage = 1
+        self.vessel.stage = 2
         self.panel = Panel(self.conn)
         self.error_status = {
             'Altitude Error': 0,
             'Direction X Error': 0,
             'Direction Y Error': 0,
+            'Direction Z Error': 1.0,
+            'Roll Error': 0,
         }
         self.panel.init_panel(self.error_status)
         self.log_filename = 'logs/general/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
@@ -28,61 +30,65 @@ class Controller:
 
     def run(self):
         status = self.vessel.get_status()
-        target_alt = 500
+        target_alt = 0
         target_vel = 0
         target_direction_y = 0
         target_direction_x = 0
+        target_direction_z = 0
+        target_roll = -90
         # pid_hover = PID(.25, -.03, .01, -0.55, status['Altitude'], target_alt)
-        # pid_yaw = PID(0, -10, 5, -5, status['Direction X'], target_direction_x)
-        # pid_pitch = PID(0, 10, -5, -5, status['Direction Y'], target_direction_y)
-        pid_yaw = PID(0, -1, .5, -5, status['Direction X'], target_direction_x)
-        pid_pitch = PID(0, 1, -.5, -5, status['Direction Y'], target_direction_y)
+        pid_yaw = PID(0, -2, 0, -10, status['Direction X'], target_direction_x)
+        pid_pitch = PID(0, 2, 0, 10, status['Direction Y'], target_direction_y)
+        pid_roll = PID(0, -0.005, 0, 0, status['Roll'], target_roll)
+        # pid_yaw = PID(0, -1, .5, -5, status['Direction X'], target_direction_x)
+        # pid_pitch = PID(0, 1, -.5, -5, status['Direction Y'], target_direction_y)
         '''
         if self.vessel.get_stage() == 0:
             self.vessel.next_stage()
             self.vessel.set_throttle(1)
             time.sleep(1)
         '''
-        throttle_mpc = MPC(self.vessel, horizon=10, dt=0.5)
+        throttle_mpc = MPC(self.vessel, horizon=10, dT=0.5, dt=0.1)
         times = []
         while True:
-            if self.vessel.altitude() > 400 and self.vessel.get_stage() == 1:
-                target_alt = 0
-                self.vessel.next_stage()
             status = self.vessel.get_status()
             if abs(target_alt - status['Altitude']) < 6 and self.vessel.get_stage() == 2:
                 print("Reached Target. Altitude: " + str(status['Altitude']))
                 self.vessel.set_throttle(0)
                 return 0
             current_state = [status['Altitude'], status['Vertical Velocity']]
-            print("Current state")
-            print(current_state)
             t1 = datetime.now()
             new_throttle = throttle_mpc.get_optimal_throttle(current_state, [target_alt, target_vel])
             t2 = datetime.now()
-            # new_pitch = pid_pitch.get_val(status['Direction Y'])
-            # new_yaw = pid_yaw.get_val(status['Direction X'])
-            print({
-                'New Throttle': new_throttle,
+            new_pitch = pid_pitch.get_val(status['Direction Y'])
+            new_yaw = pid_yaw.get_val(status['Direction X'])
+            new_roll = pid_roll.get_val(status['Roll'])
+            # print({
+                # 'New Roll': new_roll,
                 # 'New Yaw': new_yaw,
                 # 'New Pitch': new_pitch,
-            })
+            # })
             times.append((t2-t1).total_seconds())
             print("Avg time: ", sum(times) / len(times))
             self.vessel.set_throttle(new_throttle)
-            # self.vessel.set_pitch(new_pitch)
-            # self.vessel.set_yaw(new_yaw)
+            self.vessel.set_pitch(new_pitch)
+            self.vessel.set_yaw(new_yaw)
+            self.vessel.set_roll(new_roll)
             # self.write_log(new_throttle, status)
-            self.display_errors(status, target_alt, target_direction_x, target_direction_y)
+            self.display_errors(status, target_alt, target_direction_x, target_direction_y, target_direction_z,
+                                0)
 
     def write_log(self, inp_throttle, status):
         self.logs.loc[len(self.logs)] = [inp_throttle] + [status[x] for x in status.keys()]
         self.logs.to_csv(self.log_filename, index=False)
 
-    def display_errors(self, status, target_alt, target_direction_x, target_direction_y):
+    def display_errors(self, status, target_alt, target_direction_x, target_direction_y, target_direction_z,
+                       target_roll):
         self.error_status['Altitude Error'] = status['Altitude'] - target_alt
         self.error_status['Direction X Error'] = status['Direction X'] - target_direction_x
         self.error_status['Direction Y Error'] = status['Direction Y'] - target_direction_y
+        self.error_status['Direction Z Error'] = status['Direction Z'] - target_direction_z
+        self.error_status['Roll Error'] = status['Roll'] - target_roll
         self.panel.update_panel(self.error_status)
 
     def run_model_validation(self):
