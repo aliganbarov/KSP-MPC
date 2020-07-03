@@ -51,6 +51,7 @@ class Vessel:
         # self.status['Yaw'] = self.yaw()
         # self.status['Pitch'] = self.pitch()
         self.status['Roll'] = self.roll()
+        self.status['Mass'] = self.mass()
         # print(self.vessel.auto_pilot.roll_pid_gains)
         # print(self.vessel.auto_pilot.roll_error)
 

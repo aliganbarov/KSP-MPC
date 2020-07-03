@@ -10,7 +10,7 @@ class Panel:
         self.texts = {}
 
     def init_panel(self, status):
-        y_pos = 0
+        y_pos = -50
         for key in status:
             text = key + ": " + str(status[key])
             self.texts[key] = self.add_text(text, y_pos)
@@ -30,6 +30,6 @@ class Panel:
 
     def position_panel(self):
         rect = self.panel.rect_transform
-        rect.size = (200, 200)
+        rect.size = (220, 200)
         screen_size = self.canvas.rect_transform.size
         rect.position = (150. - (screen_size[0]/2.0), 0)
