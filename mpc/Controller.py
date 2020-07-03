@@ -12,7 +12,7 @@ class Controller:
 
     def __init__(self):
         self.conn = krpc.connect()
-        self.conn.space_center.load('500m')
+        self.conn.space_center.load('20K')
         self.vessel = Vessel(self.conn)
         self.vessel.stage = 2
         self.panel = Panel(self.conn)
@@ -37,9 +37,9 @@ class Controller:
         target_direction_z = 0
         target_roll = -90
         # pid_hover = PID(.25, -.03, .01, -0.55, status['Altitude'], target_alt)
-        pid_yaw = PID(0, -2, 0, -10, status['Direction X'], target_direction_x)
-        pid_pitch = PID(0, 2, 0, 10, status['Direction Y'], target_direction_y)
-        pid_roll = PID(0, -0.005, 0, 0, status['Roll'], target_roll)
+        pid_yaw = PID(0, -2, -0.5, -10, status['Direction X'], target_direction_x)
+        pid_pitch = PID(0, 2, 0.5, 10, status['Direction Y'], target_direction_y)
+        pid_roll = PID(0, -0.004, -0.0002, -0.006, status['Roll'], target_roll)
         # pid_yaw = PID(0, -1, .5, -5, status['Direction X'], target_direction_x)
         # pid_pitch = PID(0, 1, -.5, -5, status['Direction Y'], target_direction_y)
         '''
@@ -52,7 +52,16 @@ class Controller:
         times = []
         while True:
             status = self.vessel.get_status()
-            if abs(target_alt - status['Altitude']) < 6 and self.vessel.get_stage() == 2:
+            if status['Altitude'] > 5000:
+                target_alt = status['Altitude'] - 800
+                target_vel = -200
+            elif status['Altitude'] > 1000:
+                target_alt = status['Altitude'] - 800
+                target_vel = 0
+            else:
+                target_alt = 0
+                target_vel = 0
+            if abs(target_alt - status['Altitude']) < 5 and self.vessel.get_stage() == 2:
                 print("Reached Target. Altitude: " + str(status['Altitude']))
                 self.vessel.set_throttle(0)
                 return 0

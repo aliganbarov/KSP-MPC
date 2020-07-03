@@ -20,7 +20,7 @@ class Vessel:
         self.drag = conn.add_stream(getattr, self.vessel.flight(), 'drag')
         self.yaw = conn.add_stream(getattr, self.vessel.control, 'yaw')
         self.pitch = conn.add_stream(getattr, self.vessel.flight(), 'pitch')
-        self.roll = conn.add_stream(getattr, self.vessel.flight(), 'roll')
+        self.roll = conn.add_stream(getattr, self.vessel.flight(self.vessel.orbit.body.reference_frame), 'roll')
         self.mass = conn.add_stream(getattr, self.vessel, 'mass')
         self.stage = 0
 
@@ -42,14 +42,14 @@ class Vessel:
         self.status['Direction X'] = direction[2]
         self.status['Direction Y'] = direction[1]
         self.status['Direction Z'] = direction[0]
-        self.status['Throttle'] = self.throttle()
-        self.status['Thrust'] = self.thrust()
-        self.status['Drag X'] = self.drag()[2]
-        self.status['Drag Y'] = self.drag()[1]
-        self.status['Drag Z'] = self.drag()[0]
+        # self.status['Throttle'] = self.throttle()
+        # self.status['Thrust'] = self.thrust()
+        # self.status['Drag X'] = self.drag()[2]
+        # self.status['Drag Y'] = self.drag()[1]
+        # self.status['Drag Z'] = self.drag()[0]
         self.status['Vertical Velocity'] = self.vertical_velocity()
-        self.status['Yaw'] = self.yaw()
-        self.status['Pitch'] = self.pitch()
+        # self.status['Yaw'] = self.yaw()
+        # self.status['Pitch'] = self.pitch()
         self.status['Roll'] = self.roll()
         # print(self.vessel.auto_pilot.roll_pid_gains)
         # print(self.vessel.auto_pilot.roll_error)
