@@ -44,9 +44,9 @@ class Vessel:
         self.status['Direction Z'] = direction[0]
         # self.status['Throttle'] = self.throttle()
         # self.status['Thrust'] = self.thrust()
-        # self.status['Drag X'] = self.drag()[2]
-        # self.status['Drag Y'] = self.drag()[1]
-        # self.status['Drag Z'] = self.drag()[0]
+        self.status['Drag X'] = self.drag()[2]
+        self.status['Drag Y'] = self.drag()[1]
+        self.status['Drag Z'] = self.drag()[0]
         self.status['Vertical Velocity'] = self.vertical_velocity()
         # self.status['Yaw'] = self.yaw()
         # self.status['Pitch'] = self.pitch()

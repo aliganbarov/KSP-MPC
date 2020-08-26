@@ -12,7 +12,7 @@ class Controller:
 
     def __init__(self):
         self.conn = krpc.connect()
-        self.conn.space_center.load('500m')
+        self.conn.space_center.load('20K')
         self.vessel = Vessel(self.conn)
         self.vessel.stage = 2
         self.panel = Panel(self.conn)
@@ -26,7 +26,8 @@ class Controller:
                                      'Input Pitch', 'Pitch P', 'Pitch I', 'Pitch D',
                                      'Input Yaw', 'Yaw P', 'Yaw I', 'Yaw D'] +
                                     [x for x in status.keys()])
-        log_filename = 'logs/general/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
+        # log_filename = 'logs/general/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
+        log_filename = 'logs/general/data.csv'
 
         # Targets
         target_direction_y = 0
@@ -34,33 +35,52 @@ class Controller:
         target_roll = -90
 
         # Controllers settings
-        horizon, dT, dt = (10, 0.5, 0.1)
-        roll_p, roll_i, roll_d = (-0.004, -0.0002, -0.006)
-        pitch_p, pitch_i, pitch_d = (2, 0.5, 10)
-        yaw_p, yaw_i, yaw_d = (-2, -0.5, -10)
+        # horizon, dT, dt = (10, 0.5, 0.1)
+        horizon, dT, dt = (10, 0.5, 0.5)
+
+        # PID gains for 500m high fuel 0 velocity
+        # roll_p, roll_i, roll_d = (-0.004, -0.0001, -0.026)
+        # pitch_p, pitch_i, pitch_d = (2, 0.2, 20)
+        # yaw_p, yaw_i, yaw_d = (-2, -0.2, -20)
+
+        # PID gains for 20K, 200m/s velocity
+        # roll_p, roll_i, roll_d = (-0.04, -0.001, -0.26)
+        # pitch_p, pitch_i, pitch_d = (10, 1, 100)
+        # yaw_p, yaw_i, yaw_d = (-10, -1, -100)
+
+        # PID gains for 20K, 200m/s velocity
+        roll_p, roll_i, roll_d = (-0.14, -0.011, -0.56)
+        pitch_p, pitch_i, pitch_d = (10, 1, 100)
+        yaw_p, yaw_i, yaw_d = (-10, -1, -100)
 
         # Init controllers
         pid_roll = PID(0, roll_p, roll_i, roll_d, status['Roll'], target_roll)
         pid_pitch = PID(0, pitch_p, pitch_i, pitch_d, status['Direction Y'], target_direction_y)
         pid_yaw = PID(0, yaw_p, yaw_i, yaw_d, status['Direction X'], target_direction_x)
         throttle_mpc = MPC(self.vessel, horizon=horizon, dT=dT, dt=dt)
-        # pid_yaw = PID(0, -1, .5, -5, status['Direction X'], target_direction_x)
-        # pid_pitch = PID(0, 1, -.5, -5, status['Direction Y'], target_direction_y)
 
         times = []
         while True:
             t3 = datetime.now()
             status = self.vessel.get_status()
+
+            '''
+            target_alt = 500
+            target_vel = 0
+            target_alt = status['Altitude'] - 300
+            target_vel = -200
+            if status['Altitude'] < 10:
+                break
+            '''
             target_alt, target_vel = self.sliding_target(status['Altitude'])
-            if abs(target_alt - status['Altitude']) < 5 and self.vessel.get_stage() == 2:
+            if abs(target_alt - status['Altitude']) < 7 and self.vessel.get_stage() == 2:
                 print("Reached Target. Altitude: " + str(status['Altitude']))
                 self.vessel.set_throttle(0)
                 break
 
             # get controls
             t1 = datetime.now()
-            new_throttle = throttle_mpc.get_optimal_throttle([status['Altitude'], status['Vertical Velocity']],
-                                                             [target_alt, target_vel])
+            new_throttle = throttle_mpc.get_optimal_throttle([status['Altitude'], status['Vertical Velocity']],[target_alt, target_vel])
             t2 = datetime.now()
             # times.append((t2-t1).total_seconds())
             # print("Avg time: ", sum(times) / len(times))
@@ -76,7 +96,7 @@ class Controller:
 
             # save logs
             logs.loc[len(logs)] = [time.time(),
-                                   new_throttle, horizon, dT, dt,
+                                   0, horizon, dT, dt,
                                    new_roll, roll_p, roll_i, roll_d,
                                    new_pitch, pitch_p, pitch_i, pitch_d,
                                    new_yaw, yaw_p, yaw_i, yaw_d] + \
@@ -117,13 +137,13 @@ class Controller:
     @staticmethod
     def sliding_target(alt):
         if alt > 5000:
-            target_alt = alt - 800
+            target_alt = alt - 500
             target_vel = -200
         elif alt > 1000:
             target_alt = alt - 800
             target_vel = 0
         else:
-            target_alt = 0
+            target_alt = -2
             target_vel = 0
         return target_alt, target_vel
 

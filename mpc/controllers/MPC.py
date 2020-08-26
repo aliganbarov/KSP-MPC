@@ -2,6 +2,7 @@ import numpy as np
 from mpc.Settings import Settings
 from scipy.optimize import minimize
 import time
+import pickle
 
 class MPC:
     def __init__(self, vessel, horizon=5, dT=1, dt=1):
@@ -10,7 +11,8 @@ class MPC:
         self.available_thrust = self.vessel.get_available_thrust()
         self.dt = dt
         self.steps = int(np.ceil(dT/dt)) | 1
-        self.drag_model = np.poly1d(np.load('models/drag.npy'))
+        # self.drag_model = np.poly1d(np.load('models/drag.npy'))
+        self.drag_model = pickle.load(open('models/drag_tree.sav', 'rb'))
         self.m = self.vessel.get_mass()
         self.max_thrust = self.vessel.get_available_thrust()
 
@@ -20,11 +22,14 @@ class MPC:
         T = self.max_thrust * throttle
         # D = self.drag_model(v_t)
         D = 0.26615243 * v_t ** 2 - 0.4347499 * v_t + 24.01668556
+        # D = self.drag_model.predict([[v_t, y_t]])[0]
         # compute weight mg
         m = self.m
         W = Settings.G * m * Settings.M / (Settings.R + y_t) ** 2
         # compute acceleration ma = (T - D - W)
-        a_t = 1 / m * (T - np.sign(v_t) * D - W)
+        # Note: not using sign for drag, since model changed to take direction into account
+        # a_t = 1 / m * (T - np.sign(v_t) * D - W)
+        a_t = 1 / m * (T - D - W)
         # compute the vertical speed
         v_t_1 = v_t + a_t * dt
         # compute new altitude
