@@ -2,11 +2,16 @@ from mpc.Vessel import Vessel
 from mpc.Controller import Controller
 
 ctrl = Controller()
-ctrl.run()
+# ctrl.run()
 # ctrl.run_model_validation()
 
 
-# TODO: sliding target
-# TODO: run inner loop of model with dt=0.1
+for lower_alt in range(1000, 20001, 4000):
+    for upper_alt in range(1000, 20001, 4000):
+        for vel in range(50, 201, 50):
+            if vel > 50 and lower_alt == upper_alt:
+                continue
+            ctrl = Controller()
+            ctrl.run_data_gathering(lower_alt, upper_alt, vel)
 
 

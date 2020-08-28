@@ -22,6 +22,7 @@ class Vessel:
         self.pitch = conn.add_stream(getattr, self.vessel.flight(), 'pitch')
         self.roll = conn.add_stream(getattr, self.vessel.flight(self.vessel.orbit.body.reference_frame), 'roll')
         self.mass = conn.add_stream(getattr, self.vessel, 'mass')
+        self.fuel = conn.add_stream(getattr, self.vessel.parts.engines[0], 'has_fuel')
         self.stage = 0
 
         # cheating
@@ -52,6 +53,7 @@ class Vessel:
         # self.status['Pitch'] = self.pitch()
         self.status['Roll'] = self.roll()
         self.status['Mass'] = self.mass()
+        self.status['Has Fuel'] = self.fuel()
         # print(self.vessel.auto_pilot.roll_pid_gains)
         # print(self.vessel.auto_pilot.roll_error)
 
