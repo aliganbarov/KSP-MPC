@@ -12,7 +12,7 @@ class Controller:
 
     def __init__(self):
         self.conn = krpc.connect()
-        self.conn.space_center.load('500m')
+        self.conn.space_center.load('20K')
         self.vessel = Vessel(self.conn)
         self.vessel.stage = 2
         self.panel = Panel(self.conn)
@@ -54,7 +54,7 @@ class Controller:
 
             # get controls
             t1 = datetime.now()
-            # new_throttle = throttle_mpc.get_optimal_throttle([status['Altitude'], status['Vertical Velocity']],[target_alt, target_vel])
+            new_throttle = throttle_mpc.get_optimal_throttle([status['Altitude'], status['Vertical Velocity']],[target_alt, target_vel])
             t2 = datetime.now()
             # times.append((t2-t1).total_seconds())
             # print("Avg time: ", sum(times) / len(times))
@@ -63,7 +63,7 @@ class Controller:
             new_roll = pid_roll.get_val(status['Roll'])
 
             # set controls
-            # self.vessel.set_throttle(new_throttle)
+            self.vessel.set_throttle(new_throttle)
             self.vessel.set_pitch(new_pitch)
             self.vessel.set_yaw(new_yaw)
             self.vessel.set_roll(new_roll)

@@ -3,6 +3,7 @@ from mpc.Settings import Settings
 from scipy.optimize import minimize
 import time
 import pickle
+from models.drag_poly_2d import drag_poly_2d
 
 class MPC:
     def __init__(self, vessel, horizon=5, dT=1, dt=1):
@@ -21,7 +22,8 @@ class MPC:
         v_t = prev_state[1]
         T = self.max_thrust * throttle
         # D = self.drag_model(v_t)
-        D = 0.26615243 * v_t ** 2 - 0.4347499 * v_t + 24.01668556
+        # D = 0.26615243 * v_t ** 2 - 0.4347499 * v_t + 24.01668556
+        D = drag_poly_2d(v_t, y_t)
         # D = self.drag_model.predict([[v_t, y_t]])[0]
         # compute weight mg
         m = self.m
