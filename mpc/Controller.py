@@ -13,9 +13,10 @@ import pandas as pd
 
 class Controller:
 
-    def __init__(self, saved_filename='20K'):
+    def __init__(self, saved_filename=None):
         self.conn = krpc.connect()
-        self.conn.space_center.load(saved_filename)
+        if saved_filename:
+            self.conn.space_center.load(saved_filename)
         self.vessel = Vessel(self.conn)
         self.vessel.stage = 2
         # self.panel = Panel(self.conn)
@@ -60,11 +61,6 @@ class Controller:
             # update panel
             # self.panel.update_panel(status)
 
-            # calculate average time for cycle
-            t2 = datetime.now()
-            times.append((t2-t1).total_seconds())
-            # print("Avg total time: ", sum(times)/len(times))
-
             if log_handler:
                 inputs = {
                     'New Throttle': new_throttle,
@@ -73,6 +69,11 @@ class Controller:
                     'New Roll': new_roll
                 }
                 log_handler.write(params, inputs, status)
+
+            # calculate average time for cycle
+            t2 = datetime.now()
+            times.append((t2 - t1).total_seconds())
+            print("Avg total time: ", sum(times) / len(times))
 
         if log_handler:
             log_handler.save()
