@@ -37,3 +37,10 @@ class TargetHandler:
 
         return target_alt, target_vel
 
+    def pid_tuning_target(self, status):
+        if status['Altitude'] > self.lower_alt:
+            target_alt = status['Altitude'] - 500
+        else:
+            target_alt = self.lower_alt
+        return target_alt, self.velocity
+

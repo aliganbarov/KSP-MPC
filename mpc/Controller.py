@@ -9,17 +9,26 @@ from mpc.handlers.TargetHandler import TargetHandler
 from datetime import datetime
 import time
 import pandas as pd
+import numpy as np
 
 
 class Controller:
 
-    def __init__(self, saved_filename=None):
+    def __init__(self, saved_game_filename=None):
         self.conn = krpc.connect()
-        if saved_filename:
-            self.conn.space_center.load(saved_filename)
+        if saved_game_filename:
+            self.saved_game_filename = saved_game_filename
+            self.conn.space_center.load(saved_game_filename)
         self.vessel = Vessel(self.conn)
         self.vessel.stage = 2
         # self.panel = Panel(self.conn)
+        self.params = {
+            'Roll P': -0.14, 'Roll I': -0.011, 'Roll D': -0.56,
+            'Pitch P': 10, 'Pitch I': 1, 'Pitch D': 100,
+            'Yaw P': -10, 'Yaw I': -1, 'Yaw D': -100,
+            'horizon': 10, 'dT': 0.5, 'dt': 0.5,
+            'Target Direction X': 0, 'Target Direction Y': 0, 'Target Roll': -90
+        }
 
     def run(self, params, target_handler, termination_handler, log_handler=None):
         times = []
@@ -80,14 +89,7 @@ class Controller:
 
     def run_landing(self):
         # set controller parameters
-        params = {
-            'Roll P': -0.14, 'Roll I': -0.011, 'Roll D': -0.56,
-            'Pitch P': 10, 'Pitch I': 1, 'Pitch D': 100,
-            'Yaw P': -10, 'Yaw I': -1, 'Yaw D': -100,
-            'horizon': 10, 'dT': 0.5, 'dt': 0.5,
-            'Target Direction X': 0, 'Target Direction Y': 0, 'Target Roll': -90
-        }
-        self.run(params, TargetHandler.landing_sliding_target, TerminationHandler.landing_termination)
+        self.run(self.params, TargetHandler.landing_sliding_target, TerminationHandler.landing_termination)
 
     def run_data_gathering(self, lower_alt, upper_alt, velocity):
         # get init status
@@ -98,14 +100,37 @@ class Controller:
         # init target handler
         target_handler = TargetHandler(upper_alt, lower_alt, velocity)
         # set controller parameters
-        params = {
-            'Roll P': -0.14, 'Roll I': -0.011, 'Roll D': -0.56,
-            'Pitch P': 10, 'Pitch I': 1, 'Pitch D': 100,
-            'Yaw P': -10, 'Yaw I': -1, 'Yaw D': -100,
-            'horizon': 5, 'dT': 0.5, 'dt': 0.5,
-            'Target Direction X': 0, 'Target Direction Y': 0, 'Target Roll': -90
-        }
-        self.run(params, target_handler.data_gather_target, TerminationHandler.fuel_termination, log_handler)
+        self.params['horizon'] = 5
+        self.run(self.params, target_handler.data_gather_target, TerminationHandler.fuel_termination, log_handler)
+
+    def run_pid_tuning(self, param):
+        p_values = np.linspace(0.001, 0.2, 5)
+        i_values = np.linspace(0.001, 0.03, 5)
+        d_values = np.linspace(0.001, 0.50, 5)
+        for upper_alt, lower_alt, velocity, saved_game_filename in \
+                [(15000, 10000, -200, '15K_Roll'), (8000, 3000, -150, '8K_Roll'),
+                 (3000, 0, 0, '3K_Roll')]:
+            for p in p_values:
+                for i in i_values:
+                    for d in d_values:
+                        print("lower_alt: ", lower_alt, " | upper_alt: ", upper_alt, " | velocity: ", velocity,
+                              " | p: ", p, " | i: ", i, " | d: ", d)
+                        self.params[str(param) + ' P'] = -p
+                        self.params[str(param) + ' I'] = -i
+                        self.params[str(param) + ' D'] = -d
+                        self.conn.space_center.load(saved_game_filename)
+                        self.vessel = Vessel(self.conn)
+                        self.vessel.stage = 2
+                        # set target handler
+                        target_handler = TargetHandler(upper_alt, lower_alt, velocity)
+                        # get init status
+                        status = self.vessel.get_status()
+                        # init log handler
+                        log_filename = 'logs/pid_tuning/' + saved_game_filename + '_' + \
+                                       time.strftime("%Y%m%d-%H%M%S") + '.csv'
+                        log_handler = LogHandler(log_filename, status)
+                        self.run(self.params, target_handler.pid_tuning_target, TerminationHandler.hard_stop,
+                                 log_handler)
 
     def run_model_validation(self):
         log_filename = 'logs/model_validation/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'

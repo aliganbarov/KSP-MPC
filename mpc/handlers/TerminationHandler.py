@@ -14,3 +14,9 @@ class TerminationHandler:
         if not status['Has Fuel']:
             return True
         return False
+
+    @staticmethod
+    def hard_stop(target_alt, status):
+        if status['Altitude'] < target_alt:
+            return True
+        return False
