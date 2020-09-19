@@ -53,7 +53,7 @@ class MPC:
             cost += np.square(u[i] * 20)
         return cost
 
-    def get_optimal_throttle(self, current_state, target_state):
+    def get_val(self, current_state, target_state):
         u = np.zeros(self.horizon)
         bounds = [[0, 1] for i in range(self.horizon)]
         optimal_throttle = minimize(self.cost, u, (current_state, target_state),

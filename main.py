@@ -1,8 +1,19 @@
-from mpc.Vessel import Vessel
 from mpc.Controller import Controller
+import sys, getopt
 
-ctrl = Controller('20K')
-ctrl.run_landing()
+# parse arguments, argv[1] - mode, argv[2] - file to load
+if len(sys.argv) == 3:
+    mode = sys.argv[1]
+    load_file = sys.argv[2]
+elif len(sys.argv) == 2:
+    mode = sys.argv[1]
+    load_file = None
+else:
+    mode = None
+    load_file = None
+
+ctrl = Controller(load_file)
+ctrl.run_landing(mode)
 # ctrl.run_model_validation()
 # ctrl.run_pid_tuning('Roll')
 

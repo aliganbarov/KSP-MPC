@@ -23,18 +23,53 @@ class Controller:
         self.vessel.stage = 2
         # self.panel = Panel(self.conn)
         self.params = {
-            'Roll P': -0.14, 'Roll I': -0.011, 'Roll D': -0.56,
+            # 'Roll P': -0.14, 'Roll I': -0.011, 'Roll D': -0.56,
+            'Roll P': -0.001, 'Roll I': -0.02275, 'Roll D': -0.5,
             'Pitch P': 10, 'Pitch I': 1, 'Pitch D': 100,
             'Yaw P': -10, 'Yaw I': -1, 'Yaw D': -100,
             'horizon': 10, 'dT': 0.5, 'dt': 0.5,
             'Target Direction X': 0, 'Target Direction Y': 0, 'Target Roll': -90
         }
 
-    def run(self, params, target_handler, termination_handler, log_handler=None):
+    def run(self, params, target_handler, termination_handler, mode='ALL', log_handler=None):
         times = []
         # get initial status
         status = self.vessel.get_status()
-        # Init controllers
+        # initialize controllers depending on the selected mode
+        controllers = self.init_controllers(params, status, mode)
+        while True:
+            t1 = datetime.now()
+            status = self.vessel.get_status()
+            # get targets
+            target_alt, target_vel = target_handler(status)
+            # check for termination condition
+            if termination_handler(target_alt, status):
+                self.vessel.set_throttle(0)
+                print("Avg total time: ", sum(times) / len(times))
+                break
+            # update controller parameters based on current status
+            controllers = self.update_controllers(controllers, status)
+            # get the new input values
+            new_inputs = self.get_new_inputs(controllers, status, target_alt, target_vel)
+            # set new values
+            for control, value in new_inputs.items():
+                self.vessel.set_control_value(control, value)
+            # update panel
+            # self.panel.update_panel(status)
+            if log_handler:
+                inputs = {}
+                # prepend New to each key to differentiate from actual values
+                for control, value in new_inputs.items():
+                    inputs['New ' + control] = value
+                log_handler.write(params, inputs, status)
+            # calculate average time for cycle
+            t2 = datetime.now()
+            times.append((t2 - t1).total_seconds())
+            # print("Avg total time: ", sum(times) / len(times))
+        if log_handler:
+            log_handler.save()
+
+    def init_controllers(self, params, status, mode):
         pid_roll = PID(0, params['Roll P'], params['Roll I'], params['Roll D'],
                        status['Roll'], params['Target Roll'])
         pid_pitch = PID(0, params['Pitch P'], params['Pitch I'], params['Pitch D'],
@@ -42,54 +77,24 @@ class Controller:
         pid_yaw = PID(0, params['Yaw P'], params['Yaw I'], params['Yaw D'],
                       status['Direction X'], params['Target Direction X'])
         throttle_mpc = MPC(self.vessel, horizon=params['horizon'], dT=params['dT'], dt=params['dt'])
-        while True:
-            t1 = datetime.now()
-            status = self.vessel.get_status()
+        pid_controllers = {
+            'Roll': pid_roll,
+            'Pitch': pid_pitch,
+            'Yaw': pid_yaw
+        }
+        mpc_controller = {
+            'Throttle': throttle_mpc
+        }
+        if mode == 'PID':
+            return pid_controllers
+        elif mode == 'MPC':
+            return mpc_controller
+        else:
+            return pid_controllers.update(mpc_controller)
 
-            # get targets
-            target_alt, target_vel = target_handler(status)
-
-            # check for termination condition
-            if termination_handler(target_alt, status):
-                self.vessel.set_throttle(0)
-                break
-
-            # get new input values
-            new_throttle = throttle_mpc.get_optimal_throttle([status['Altitude'], status['Vertical Velocity']],
-                                                             [target_alt, target_vel])
-            new_pitch = pid_pitch.get_val(status['Direction Y'])
-            new_yaw = pid_yaw.get_val(status['Direction X'])
-            new_roll = pid_roll.get_val(status['Roll'])
-
-            # set new values
-            self.vessel.set_throttle(new_throttle)
-            self.vessel.set_pitch(new_pitch)
-            self.vessel.set_yaw(new_yaw)
-            self.vessel.set_roll(new_roll)
-
-            # update panel
-            # self.panel.update_panel(status)
-
-            if log_handler:
-                inputs = {
-                    'New Throttle': new_throttle,
-                    'New Pitch': new_pitch,
-                    'New Yaw': new_yaw,
-                    'New Roll': new_roll
-                }
-                log_handler.write(params, inputs, status)
-
-            # calculate average time for cycle
-            t2 = datetime.now()
-            times.append((t2 - t1).total_seconds())
-            print("Avg total time: ", sum(times) / len(times))
-
-        if log_handler:
-            log_handler.save()
-
-    def run_landing(self):
+    def run_landing(self, mode):
         # set controller parameters
-        self.run(self.params, TargetHandler.landing_sliding_target, TerminationHandler.landing_termination)
+        self.run(self.params, TargetHandler.landing_sliding_target, TerminationHandler.landing_termination, mode)
 
     def run_data_gathering(self, lower_alt, upper_alt, velocity):
         # get init status
@@ -101,15 +106,15 @@ class Controller:
         target_handler = TargetHandler(upper_alt, lower_alt, velocity)
         # set controller parameters
         self.params['horizon'] = 5
-        self.run(self.params, target_handler.data_gather_target, TerminationHandler.fuel_termination, log_handler)
+        self.run(self.params, target_handler.data_gather_target, TerminationHandler.fuel_termination, 'ALL', log_handler)
 
     def run_pid_tuning(self, param):
         p_values = np.linspace(0.001, 0.2, 5)
         i_values = np.linspace(0.001, 0.03, 5)
         d_values = np.linspace(0.001, 0.50, 5)
         for upper_alt, lower_alt, velocity, saved_game_filename in \
-                [(15000, 10000, -200, '15K_Roll'), (8000, 3000, -150, '8K_Roll'),
-                 (3000, 0, 0, '3K_Roll')]:
+                [# (20000, 15000, -200, '20K_Roll'), (15000, 10000, -200, '15K_Roll'), (8000, 3000, -150, '8K_Roll'),
+                 (3000, 50, 0, '3K_Roll')]:
             for p in p_values:
                 for i in i_values:
                     for d in d_values:
@@ -129,7 +134,7 @@ class Controller:
                         log_filename = 'logs/pid_tuning/' + saved_game_filename + '_' + \
                                        time.strftime("%Y%m%d-%H%M%S") + '.csv'
                         log_handler = LogHandler(log_filename, status)
-                        self.run(self.params, target_handler.pid_tuning_target, TerminationHandler.hard_stop,
+                        self.run(self.params, target_handler.pid_tuning_target, TerminationHandler.hard_stop, 'ALL',
                                  log_handler)
 
     def run_model_validation(self):
@@ -156,3 +161,25 @@ class Controller:
                     df.loc[len(df)] = [horizon, dt] + item
         df.to_csv(log_filename, index=False)
 
+    @staticmethod
+    def update_controllers(controllers, status):
+        if 'Roll' in controllers.keys():
+            if status['Altitude'] < 15000:
+                controllers['Roll'].set_k_i(-0.0155)
+            elif status['Altitude'] < 10000:
+                controllers['Roll'].set_k_p(-0.05075)
+                controllers['Roll'].set_k_d(-0.001)
+        return controllers
+
+    @staticmethod
+    def get_new_inputs(controllers, status, target_alt, target_vel):
+        controller_input = {
+            'Pitch': (status['Direction Y'], ),
+            'Yaw': (status['Direction X'], ),
+            'Roll': (status['Roll'], ),
+            'Throttle': ([status['Altitude'], status['Vertical Velocity']], [target_alt, target_vel])
+        }
+        new_inputs = {}
+        for key, val in controllers.items():
+            new_inputs[key] = val.get_val(*controller_input[key])
+        return new_inputs

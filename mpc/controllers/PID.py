@@ -35,3 +35,12 @@ class PID:
         self.prev_val = curr_val
         return new_val
 
+    def set_k_p(self, p):
+        self.k_p = p
+
+    def set_k_i(self, k_i):
+        self.k_i = k_i
+
+    def set_k_d(self, k_d):
+        self.k_d = k_d
+

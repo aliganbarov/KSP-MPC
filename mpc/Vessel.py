@@ -79,3 +79,13 @@ class Vessel:
     def get_available_thrust(self):
         return self.vessel.max_thrust
 
+    def set_control_value(self, key, value):
+        if key == 'Throttle':
+            self.vessel.control.throttle = value
+        elif key == 'Pitch':
+            self.vessel.control.pitch = value
+        elif key == 'Yaw':
+            self.vessel.control.yaw = value
+        elif key == 'Roll':
+            self.vessel.control.roll = value
+
