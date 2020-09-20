@@ -1,3 +1,4 @@
+from datetime import datetime
 
 
 class PID:
@@ -10,12 +11,18 @@ class PID:
         self.prev_errors = []
         self.prev_val = init_val
         self.target_val = target_val
+        self.prev_time = datetime.now()
 
     def get_val(self, curr_val, print_vals=False):
+        curr_time = datetime.now()
+        dt = (curr_time - self.prev_time).total_seconds()
+        self.prev_time = curr_time
         # PID components
         proportion = curr_val - self.target_val
-        integral = sum(self.prev_errors) / 10.
-        differential = (curr_val - self.prev_val)
+        integral = sum(self.prev_errors) / 10. * dt
+        differential = (curr_val - self.prev_val) / dt
+
+        print('dt:', dt, '. integral: ', integral, '. diff: ', differential)
 
         # adjust value
         new_val = self.k_c + self.k_p * proportion + self.k_i * integral + self.k_d * differential

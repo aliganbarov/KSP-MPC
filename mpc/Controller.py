@@ -37,6 +37,7 @@ class Controller:
         status = self.vessel.get_status()
         # initialize controllers depending on the selected mode
         controllers = self.init_controllers(params, status, mode)
+        print(controllers)
         while True:
             t1 = datetime.now()
             status = self.vessel.get_status()
@@ -90,7 +91,7 @@ class Controller:
         elif mode == 'MPC':
             return mpc_controller
         else:
-            return pid_controllers.update(mpc_controller)
+            return {**pid_controllers, **mpc_controller}
 
     def run_landing(self, mode):
         # set controller parameters
