@@ -23,10 +23,17 @@ class Controller:
         self.vessel.stage = 2
         # self.panel = Panel(self.conn)
         self.params = {
-            # 'Roll P': -0.14, 'Roll I': -0.011, 'Roll D': -0.56,
-            'Roll P': -0.001, 'Roll I': -0.02275, 'Roll D': -0.5,
-            'Pitch P': 10, 'Pitch I': 1, 'Pitch D': 100,
-            'Yaw P': -10, 'Yaw I': -1, 'Yaw D': -100,
+            # before PID dt tuning
+            # 'Roll P': -0.001, 'Roll I': -0.02275, 'Roll D': -0.5,
+            # 'Pitch P': 10, 'Pitch I': 1, 'Pitch D': 100,
+            # 'Yaw P': -10, 'Yaw I': -1, 'Yaw D': -100,
+            # after
+            # 'Roll P': -0.01, 'Roll I': -0.0275, 'Roll D': -0.01,
+            'Roll P': -0.0105, 'Roll I': -0.025, 'Roll D': -0.0125,
+            'Pitch P': 10, 'Pitch I': 0.01, 'Pitch D': 10,
+            # 'Pitch P': 10, 'Pitch I': 5, 'Pitch D': 10, # works for separate
+            'Yaw P': -10, 'Yaw I': -0.01, 'Yaw D': -10,
+            # 'Yaw P': -10, 'Yaw I': -5, 'Yaw D': -10, # works for separate
             'horizon': 10, 'dT': 0.5, 'dt': 0.5,
             'Target Direction X': 0, 'Target Direction Y': 0, 'Target Roll': -90
         }
@@ -37,7 +44,6 @@ class Controller:
         status = self.vessel.get_status()
         # initialize controllers depending on the selected mode
         controllers = self.init_controllers(params, status, mode)
-        print(controllers)
         while True:
             t1 = datetime.now()
             status = self.vessel.get_status()
@@ -110,11 +116,11 @@ class Controller:
         self.run(self.params, target_handler.data_gather_target, TerminationHandler.fuel_termination, 'ALL', log_handler)
 
     def run_pid_tuning(self, param):
-        p_values = np.linspace(0.001, 0.2, 5)
-        i_values = np.linspace(0.001, 0.03, 5)
-        d_values = np.linspace(0.001, 0.50, 5)
+        p_values = np.linspace(0.001, 0.02, 5)
+        i_values = np.linspace(0.01, 0.03, 5)
+        d_values = np.linspace(0.005, 0.02, 5)
         for upper_alt, lower_alt, velocity, saved_game_filename in \
-                [# (20000, 15000, -200, '20K_Roll'), (15000, 10000, -200, '15K_Roll'), (8000, 3000, -150, '8K_Roll'),
+                [(20000, 15000, -200, '20K_Roll'), (15000, 10000, -200, '15K_Roll'), (8000, 3000, -150, '8K_Roll'),
                  (3000, 50, 0, '3K_Roll')]:
             for p in p_values:
                 for i in i_values:
@@ -132,7 +138,7 @@ class Controller:
                         # get init status
                         status = self.vessel.get_status()
                         # init log handler
-                        log_filename = 'logs/pid_tuning/' + saved_game_filename + '_' + \
+                        log_filename = 'logs/pid_tuning_separate/' + param + '_' + saved_game_filename + '_' + \
                                        time.strftime("%Y%m%d-%H%M%S") + '.csv'
                         log_handler = LogHandler(log_filename, status)
                         self.run(self.params, target_handler.pid_tuning_target, TerminationHandler.hard_stop, 'ALL',
@@ -167,9 +173,14 @@ class Controller:
         if 'Roll' in controllers.keys():
             if status['Altitude'] < 15000:
                 controllers['Roll'].set_k_i(-0.0155)
-            elif status['Altitude'] < 10000:
-                controllers['Roll'].set_k_p(-0.05075)
-                controllers['Roll'].set_k_d(-0.001)
+            elif status['Altitude'] < 8000:
+                controllers['Roll'].set_k_p(-0.02)
+                controllers['Roll'].set_k_i(-0.01)
+                controllers['Roll'].set_k_d(-0.02)
+            elif status['Altitude'] < 3000:
+                controllers['Roll'].set_k_p(-0.01525)
+                controllers['Roll'].set_k_i(-0.02)
+                controllers['Roll'].set_k_d(-0.02)
         return controllers
 
     @staticmethod

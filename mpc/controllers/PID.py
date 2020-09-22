@@ -9,6 +9,7 @@ class PID:
         self.k_i = k_i
         self.k_d = k_d
         self.prev_errors = []
+        self.buffer = 10.
         self.prev_val = init_val
         self.target_val = target_val
         self.prev_time = datetime.now()
@@ -19,10 +20,8 @@ class PID:
         self.prev_time = curr_time
         # PID components
         proportion = curr_val - self.target_val
-        integral = sum(self.prev_errors) / 10. * dt
+        integral = sum(self.prev_errors) / self.buffer * dt
         differential = (curr_val - self.prev_val) / dt
-
-        print('dt:', dt, '. integral: ', integral, '. diff: ', differential)
 
         # adjust value
         new_val = self.k_c + self.k_p * proportion + self.k_i * integral + self.k_d * differential
@@ -36,7 +35,7 @@ class PID:
 
         # Keep pushing / pulling the integral buffer
         self.prev_errors.append(curr_val - self.target_val)
-        if len(self.prev_errors) > 10:
+        if len(self.prev_errors) > self.buffer:
             self.prev_errors = self.prev_errors[1:]
 
         self.prev_val = curr_val
