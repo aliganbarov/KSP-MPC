@@ -13,8 +13,10 @@ class Vessel:
         self.vessel = self.conn.space_center.active_vessel
         self.altitude = conn.add_stream(getattr, self.vessel.flight(), 'surface_altitude')
         self.direction = conn.add_stream(getattr, self.vessel.flight(self.vessel.surface_reference_frame), 'direction')
+        self.retrograde = conn.add_stream(getattr, self.vessel.flight(self.vessel.surface_velocity_reference_frame), 'retrograde')
         self.vertical_velocity = conn.add_stream(getattr, self.vessel.flight(self.vessel.orbit.body.reference_frame),
                                                  'vertical_speed')
+        self.velocity = conn.add_stream(getattr, self.vessel.flight(self.vessel.orbit.body.reference_frame), 'velocity')
         self.throttle = conn.add_stream(getattr, self.vessel.control, 'throttle')
         self.thrust = conn.add_stream(getattr, self.vessel, 'thrust')
         self.drag = conn.add_stream(getattr, self.vessel.flight(), 'drag')
@@ -44,7 +46,7 @@ class Vessel:
         self.status['Direction Y'] = direction[1]
         self.status['Direction Z'] = direction[0]
         # self.status['Throttle'] = self.throttle()
-        # self.status['Thrust'] = self.thrust()
+        self.status['Thrust'] = self.thrust()
         self.status['Drag X'] = self.drag()[2]
         self.status['Drag Y'] = self.drag()[1]
         self.status['Drag Z'] = self.drag()[0]
@@ -56,6 +58,8 @@ class Vessel:
         self.status['Has Fuel'] = self.fuel()
         # print(self.vessel.auto_pilot.roll_pid_gains)
         # print(self.vessel.auto_pilot.roll_error)
+        # print(f"Direction: {self.direction()}")
+        # print(f"Retrograde: {self.retrograde()}")
 
     def get_status(self):
         self.update_status()
@@ -89,3 +93,6 @@ class Vessel:
         elif key == 'Roll':
             self.vessel.control.roll = value
 
+    def set_autopilot(self):
+        self.vessel.auto_pilot.engage()
+        self.vessel.auto_pilot.target_direction = (1, 0, 0)

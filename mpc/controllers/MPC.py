@@ -79,12 +79,12 @@ class MPC:
                 model_input = [actual_state['Altitude'], actual_state['Vertical Velocity']]
             else:
                 model_input = [model_state[2], model_state[3]]
-            # get the model prediction
-            model_state = self.model(model_input, throttle_values[timestamp], debug=True)
             # set the rockets throttle
             input_throttle = throttle_values[timestamp]
             if actual_state['Altitude'] < 200:
                 input_throttle = 1
+            # get the model prediction
+            model_state = self.model(model_input, input_throttle, self.dt, debug=True)
             self.vessel.set_throttle(input_throttle)
             # wait for dt
             time.sleep(self.dt)

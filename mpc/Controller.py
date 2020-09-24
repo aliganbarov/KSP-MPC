@@ -72,7 +72,7 @@ class Controller:
             # calculate average time for cycle
             t2 = datetime.now()
             times.append((t2 - t1).total_seconds())
-            # print("Avg total time: ", sum(times) / len(times))
+            print("Avg total time: ", sum(times) / len(times))
         if log_handler:
             log_handler.save()
 
@@ -145,23 +145,26 @@ class Controller:
                                  log_handler)
 
     def run_model_validation(self):
-        log_filename = 'logs/model_validation/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
+        log_filename = 'logs/model_validation_drag_with_alt_vel/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
         df = pd.DataFrame(columns=['horizon', 'dt', 'Input Altitude', 'Input Velocity', 'Model Altitude', 'Model Velocity',
                                    'Model Thrust', 'Model Drag', 'Model Mass', 'Model Weight', 'Model Acceleration',
                                    'Actual Altitude', 'Actual Velocity', 'Actual Thrust', 'Actual Drag',
                                    'Actual Mass', 'Input Throttle'])
-        horizons = [0, 5, 10, 15, 20, 1000]
+        # horizons = [0, 5, 10, 15, 20, 1000]
+        horizons = [50, 100]
         dts = [0.1, 0.2, 0.5, 1]
-        inputs = [(0, 0, 10), (0, 1, 10), (0, 0, 10), (0, 1, 10), (0, 0, 10), (0, 1, 10), (0, 0, 15), (0.3, 0.3, 20)]
+        inputs = [(0, 0, 10), (0, 1, 10), (0, 0, 5), (0, 1, 10), (0, 0, 10),
+                  (0.5, 0.5, 35), (0, 0, 15), (1, 1, 5), (0, 0, 60), (0.15, 0.15, 40)]
         for horizon in horizons:
             for dt in dts:
                 self.conn.space_center.load('launch_stage')
                 self.vessel = Vessel(self.conn)
+                self.vessel.set_autopilot()
                 if self.vessel.get_stage() == 0:
                     self.vessel.next_stage()
                     self.vessel.set_throttle(0.5)
                     time.sleep(4)
-                throttle_mpc = MPC(self.vessel, horizon=horizon, dt=dt)
+                throttle_mpc = MPC(self.vessel, horizon=horizon, dT=dt, dt=dt)
                 print('h: ', horizon, 't: ', dt)
                 data = throttle_mpc.model_validation(inputs)
                 for item in data:
