@@ -72,7 +72,7 @@ class Controller:
             # calculate average time for cycle
             t2 = datetime.now()
             times.append((t2 - t1).total_seconds())
-            print("Avg total time: ", sum(times) / len(times))
+            # print("Avg total time: ", sum(times) / len(times))
         if log_handler:
             log_handler.save()
 
@@ -184,6 +184,18 @@ class Controller:
                 controllers['Roll'].set_k_p(-0.01525)
                 controllers['Roll'].set_k_i(-0.02)
                 controllers['Roll'].set_k_d(-0.02)
+        if 'Pitch' in controllers.keys():
+            if abs(status['Retrograde Y']) > 0.1 and abs(status['Vertical Velocity']) > 3:
+                controllers['Pitch'].set_target_val(status['Retrograde Y'])
+                # print(f"Setting new target pitch:  {status['Retrograde Y']}")
+            else:
+                controllers['Pitch'].set_target_val(0)
+        if 'Yaw' in controllers.keys():
+            if abs(status['Retrograde X']) > 0.1 and abs(status['Vertical Velocity']) > 3:
+                controllers['Yaw'].set_target_val(status['Retrograde X'])
+                # print(f"Setting new target yaw: {status['Retrograde X']}")
+            else:
+                controllers['Yaw'].set_target_val(0)
         return controllers
 
     @staticmethod

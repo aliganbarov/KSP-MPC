@@ -50,3 +50,5 @@ class PID:
     def set_k_d(self, k_d):
         self.k_d = k_d
 
+    def set_target_val(self, target_val):
+        self.target_val = target_val

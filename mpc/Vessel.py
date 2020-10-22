@@ -1,4 +1,4 @@
-
+import numpy as np
 
 class Vessel:
 
@@ -12,11 +12,19 @@ class Vessel:
         self.conn = conn
         self.vessel = self.conn.space_center.active_vessel
         self.altitude = conn.add_stream(getattr, self.vessel.flight(), 'surface_altitude')
-        self.direction = conn.add_stream(getattr, self.vessel.flight(self.vessel.surface_reference_frame), 'direction')
-        self.retrograde = conn.add_stream(getattr, self.vessel.flight(self.vessel.surface_velocity_reference_frame), 'retrograde')
+
+        ref_frame = conn.space_center.ReferenceFrame.create_hybrid(
+            position=self.vessel.orbit.body.reference_frame,
+            rotation=self.vessel.surface_reference_frame)
+        self.direction = conn.add_stream(getattr, self.vessel.flight(ref_frame), 'direction')
+        # self.retrograde = conn.add_stream(getattr, self.vessel.flight(ref_frame), 'retrograde')
+        self.velocity = conn.add_stream(getattr, self.vessel.flight(ref_frame), 'velocity')
+        conn.drawing.add_direction((1, 0, 0), ref_frame)
+        conn.drawing.add_direction((0, 0.5, 0), ref_frame)
+        conn.drawing.add_direction((0, 0, 0.2), ref_frame)
+
         self.vertical_velocity = conn.add_stream(getattr, self.vessel.flight(self.vessel.orbit.body.reference_frame),
                                                  'vertical_speed')
-        self.velocity = conn.add_stream(getattr, self.vessel.flight(self.vessel.orbit.body.reference_frame), 'velocity')
         self.throttle = conn.add_stream(getattr, self.vessel.control, 'throttle')
         self.thrust = conn.add_stream(getattr, self.vessel, 'thrust')
         self.drag = conn.add_stream(getattr, self.vessel.flight(), 'drag')
@@ -56,10 +64,13 @@ class Vessel:
         self.status['Roll'] = self.roll()
         self.status['Mass'] = self.mass()
         self.status['Has Fuel'] = self.fuel()
-        # print(self.vessel.auto_pilot.roll_pid_gains)
-        # print(self.vessel.auto_pilot.roll_error)
-        # print(f"Direction: {self.direction()}")
-        # print(f"Retrograde: {self.retrograde()}")
+        # get custom retrograde as inverse of normalized velocity
+        velocity = self.velocity()
+        retrograde = (-velocity[0], -velocity[1], -velocity[2]) / np.linalg.norm(velocity)
+        # print(f"Custom retrograde: {retrograde}")
+        # print(f"Direction: {direction}")
+        self.status['Retrograde X'] = retrograde[2]
+        self.status['Retrograde Y'] = retrograde[1]
 
     def get_status(self):
         self.update_status()
