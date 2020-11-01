@@ -3,7 +3,7 @@ from datetime import datetime
 
 class PID:
 
-    def __init__(self, k_c, k_p, k_i, k_d, init_val, target_val):
+    def __init__(self, k_c, k_p, k_i, k_d, init_val, target_val, init_time):
         self.k_c = k_c
         self.k_p = k_p
         self.k_i = k_i
@@ -12,16 +12,19 @@ class PID:
         self.buffer = 10.
         self.prev_val = init_val
         self.target_val = target_val
-        self.prev_time = datetime.now()
+        self.prev_time = init_time
+        self.dt = 1
 
-    def get_val(self, curr_val, print_vals=False):
-        curr_time = datetime.now()
-        dt = (curr_time - self.prev_time).total_seconds()
+    def get_val(self, curr_val, curr_time, print_vals=False):
+        # dt = (curr_time - self.prev_time).total_seconds()
+        dt = curr_time - self.prev_time
+        if dt != 0:
+            self.dt = dt
         self.prev_time = curr_time
         # PID components
         proportion = curr_val - self.target_val
-        integral = sum(self.prev_errors) / self.buffer * dt
-        differential = (curr_val - self.prev_val) / dt
+        integral = sum(self.prev_errors) / self.buffer * self.dt
+        differential = (curr_val - self.prev_val) / self.dt
 
         # adjust value
         new_val = self.k_c + self.k_p * proportion + self.k_i * integral + self.k_d * differential
@@ -52,3 +55,6 @@ class PID:
 
     def set_target_val(self, target_val):
         self.target_val = target_val
+
+    def get_target_val(self):
+        return self.target_val

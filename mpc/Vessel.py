@@ -34,7 +34,6 @@ class Vessel:
         self.mass = conn.add_stream(getattr, self.vessel, 'mass')
         self.fuel = conn.add_stream(getattr, self.vessel.parts.engines[0], 'has_fuel')
         self.stage = 0
-
         # cheating
         # self.vessel.auto_pilot.engage()
         # self.vessel.auto_pilot.target_direction = (1, 0, 0)

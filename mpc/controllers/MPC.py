@@ -21,21 +21,21 @@ class MPC:
         y_t = prev_state[0]
         v_t = prev_state[1]
         T = self.max_thrust * throttle
-        # D = self.drag_model(v_t)
-        # D = 0.26615243 * v_t ** 2 - 0.4347499 * v_t + 24.01668556
-        D = drag_poly_2d(v_t, y_t)
-        # D = self.drag_model.predict([[v_t, y_t]])[0]
+        # 1D Drag
+        D = 0.26615243 * v_t ** 2 - 0.4347499 * v_t + 24.01668556
+        # 2D Drag
+        # D = drag_poly_2d(v_t, y_t)
         # compute weight mg
+        # m = self.vessel.get_mass()
         m = self.m
-        W = Settings.G * m * Settings.M / (Settings.R + y_t) ** 2
+        W = (Settings.G * m * Settings.M) / ((Settings.R + y_t) ** 2)
         # compute acceleration ma = (T - D - W)
-        # Note: not using sign for drag, since model changed to take direction into account
-        # a_t = 1 / m * (T - np.sign(v_t) * D - W)
-        a_t = 1 / m * (T - D - W)
+        a_t = (1 / m) * (T - np.sign(v_t) * D - W)
         # compute the vertical speed
         v_t_1 = v_t + a_t * dt
         # compute new altitude
         y_t_1 = y_t + v_t_1 * dt
+        # print(f"T: {T}. D: {D}. W: {W}. a_t: {a_t}, v_t_1: {v_t_1}, y_t_1: {y_t_1}")
         # return new state
         if debug:
             return [y_t, v_t, y_t_1, v_t_1, T, D, m, W, a_t]
@@ -81,8 +81,6 @@ class MPC:
                 model_input = [model_state[2], model_state[3]]
             # set the rockets throttle
             input_throttle = throttle_values[timestamp]
-            if actual_state['Altitude'] < 200:
-                input_throttle = 1
             # get the model prediction
             model_state = self.model(model_input, input_throttle, self.dt, debug=True)
             self.vessel.set_throttle(input_throttle)

@@ -30,6 +30,7 @@ class Controller:
             # after
             # 'Roll P': -0.01, 'Roll I': -0.0275, 'Roll D': -0.01,
             'Roll P': -0.0105, 'Roll I': -0.025, 'Roll D': -0.0125,
+            # 'Roll P': -0.035, 'Roll I': -0.055, 'Roll D': -0.05,
             'Pitch P': 10, 'Pitch I': 0.01, 'Pitch D': 10,
             # 'Pitch P': 10, 'Pitch I': 5, 'Pitch D': 10, # works for separate
             'Yaw P': -10, 'Yaw I': -0.01, 'Yaw D': -10,
@@ -57,7 +58,8 @@ class Controller:
             # update controller parameters based on current status
             controllers = self.update_controllers(controllers, status)
             # get the new input values
-            new_inputs = self.get_new_inputs(controllers, status, target_alt, target_vel)
+            new_inputs = self.get_new_inputs(controllers, status, target_alt, target_vel,
+                                             self.conn.space_center.ut)
             # set new values
             for control, value in new_inputs.items():
                 self.vessel.set_control_value(control, value)
@@ -78,11 +80,11 @@ class Controller:
 
     def init_controllers(self, params, status, mode):
         pid_roll = PID(0, params['Roll P'], params['Roll I'], params['Roll D'],
-                       status['Roll'], params['Target Roll'])
+                       status['Roll'], params['Target Roll'], self.conn.space_center.ut)
         pid_pitch = PID(0, params['Pitch P'], params['Pitch I'], params['Pitch D'],
-                        status['Direction Y'], params['Target Direction Y'])
+                        status['Direction Y'], params['Target Direction Y'], self.conn.space_center.ut)
         pid_yaw = PID(0, params['Yaw P'], params['Yaw I'], params['Yaw D'],
-                      status['Direction X'], params['Target Direction X'])
+                      status['Direction X'], params['Target Direction X'], self.conn.space_center.ut)
         throttle_mpc = MPC(self.vessel, horizon=params['horizon'], dT=params['dT'], dt=params['dt'])
         pid_controllers = {
             'Roll': pid_roll,
@@ -100,6 +102,11 @@ class Controller:
             return {**pid_controllers, **mpc_controller}
 
     def run_landing(self, mode):
+        # get init status
+        status = self.vessel.get_status()
+        # init log handler
+        log_filename = 'logs/results/landing_demo.csv'
+        log_handler = LogHandler(log_filename, status)
         # set controller parameters
         self.run(self.params, TargetHandler.landing_sliding_target, TerminationHandler.landing_termination, mode)
 
@@ -116,11 +123,11 @@ class Controller:
         self.run(self.params, target_handler.data_gather_target, TerminationHandler.fuel_termination, 'ALL', log_handler)
 
     def run_pid_tuning(self, param):
-        p_values = np.linspace(0.001, 0.02, 5)
+        p_values = np.linspace(0.01, 0.03, 5)
         i_values = np.linspace(0.01, 0.03, 5)
-        d_values = np.linspace(0.005, 0.02, 5)
+        d_values = np.linspace(0.01, 0.03, 5)
         for upper_alt, lower_alt, velocity, saved_game_filename in \
-                [(20000, 15000, -200, '20K_Roll'), (15000, 10000, -200, '15K_Roll'), (8000, 3000, -150, '8K_Roll'),
+                [(8000, 3000, -150, '8K_Roll'),
                  (3000, 50, 0, '3K_Roll')]:
             for p in p_values:
                 for i in i_values:
@@ -145,16 +152,18 @@ class Controller:
                                  log_handler)
 
     def run_model_validation(self):
-        log_filename = 'logs/model_validation_drag_with_alt_vel/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
+        # log_filename = 'logs/model_validation_drag_with_alt_vel/' + time.strftime("%Y%m%d-%H%M%S") + '.csv'
         df = pd.DataFrame(columns=['horizon', 'dt', 'Input Altitude', 'Input Velocity', 'Model Altitude', 'Model Velocity',
                                    'Model Thrust', 'Model Drag', 'Model Mass', 'Model Weight', 'Model Acceleration',
                                    'Actual Altitude', 'Actual Velocity', 'Actual Thrust', 'Actual Drag',
                                    'Actual Mass', 'Input Throttle'])
         # horizons = [0, 5, 10, 15, 20, 1000]
-        horizons = [50, 100]
-        dts = [0.1, 0.2, 0.5, 1]
-        inputs = [(0, 0, 10), (0, 1, 10), (0, 0, 5), (0, 1, 10), (0, 0, 10),
-                  (0.5, 0.5, 35), (0, 0, 15), (1, 1, 5), (0, 0, 60), (0.15, 0.15, 40)]
+        horizons = [10, 20, 50, 100, 100000]
+        dts = [1]
+        inputs = [(1, 1, 5), (0, 0, 10), (0, 1, 10), (0, 1, 10), (0, 0, 15), (1, 1, 5),
+                  (0.5, 0.5, 20), (0, 0.5, 45), (0.1, 0.1, 5), (0, 0, 50), (0.5, 0.3, 30)]
+        inputs = [(1, 1, 5), (0, 0, 10), (1, 1, 5), (0, 0, 5), (1, 1, 5), (0, 0, 5), (1, 1, 5),
+                  (0, 0, 5), (1, 1, 5), (0, 0, 5), (1, 1, 4), (0, 0, 60), (0.1, 0.1, 30), (0.2, 0.2, 20)]
         for horizon in horizons:
             for dt in dts:
                 self.conn.space_center.load('launch_stage')
@@ -162,48 +171,54 @@ class Controller:
                 self.vessel.set_autopilot()
                 if self.vessel.get_stage() == 0:
                     self.vessel.next_stage()
-                    self.vessel.set_throttle(0.5)
-                    time.sleep(4)
                 throttle_mpc = MPC(self.vessel, horizon=horizon, dT=dt, dt=dt)
                 print('h: ', horizon, 't: ', dt)
                 data = throttle_mpc.model_validation(inputs)
                 for item in data:
                     df.loc[len(df)] = [horizon, dt] + item
-        df.to_csv(log_filename, index=False)
+                df.to_csv('logs/model_validation/horizon_' + str(horizon) + "_dt_ " + str(dt) + '.csv', index=False)
+                # df.to_csv('logs/model_validation_drag_with_alt_vel/horizon_' + str(horizon) + "_dt_" + str(dt) + '.csv', index=False)
+                df = pd.DataFrame(
+                    columns=['horizon', 'dt', 'Input Altitude', 'Input Velocity', 'Model Altitude', 'Model Velocity',
+                             'Model Thrust', 'Model Drag', 'Model Mass', 'Model Weight', 'Model Acceleration',
+                             'Actual Altitude', 'Actual Velocity', 'Actual Thrust', 'Actual Drag',
+                             'Actual Mass', 'Input Throttle'])
 
     @staticmethod
     def update_controllers(controllers, status):
         if 'Roll' in controllers.keys():
             if status['Altitude'] < 15000:
-                controllers['Roll'].set_k_i(-0.0155)
+                controllers['Roll'].set_k_p(-0.03)
+                controllers['Roll'].set_k_i(-0.045)
+                controllers['Roll'].set_k_d(-0.02)
             elif status['Altitude'] < 8000:
-                controllers['Roll'].set_k_p(-0.02)
-                controllers['Roll'].set_k_i(-0.01)
-                controllers['Roll'].set_k_d(-0.02)
+                controllers['Roll'].set_k_p(-0.045)
+                controllers['Roll'].set_k_i(-0.03)
+                controllers['Roll'].set_k_d(-0.055)
             elif status['Altitude'] < 3000:
-                controllers['Roll'].set_k_p(-0.01525)
-                controllers['Roll'].set_k_i(-0.02)
-                controllers['Roll'].set_k_d(-0.02)
+                controllers['Roll'].set_k_p(-0.035)
+                controllers['Roll'].set_k_i(-0.055)
+                controllers['Roll'].set_k_d(-0.05)
         if 'Pitch' in controllers.keys():
             if abs(status['Retrograde Y']) > 0.1 and abs(status['Vertical Velocity']) > 3:
                 controllers['Pitch'].set_target_val(status['Retrograde Y'])
-                # print(f"Setting new target pitch:  {status['Retrograde Y']}")
             else:
                 controllers['Pitch'].set_target_val(0)
         if 'Yaw' in controllers.keys():
             if abs(status['Retrograde X']) > 0.1 and abs(status['Vertical Velocity']) > 3:
                 controllers['Yaw'].set_target_val(status['Retrograde X'])
-                # print(f"Setting new target yaw: {status['Retrograde X']}")
             else:
                 controllers['Yaw'].set_target_val(0)
+        # print(f"Setting new target pitch:  {controllers['Pitch'].get_target_val()}")
+        # print(f"Setting new target yaw: {controllers['Yaw'].get_target_val()}")
         return controllers
 
     @staticmethod
-    def get_new_inputs(controllers, status, target_alt, target_vel):
+    def get_new_inputs(controllers, status, target_alt, target_vel, curr_time):
         controller_input = {
-            'Pitch': (status['Direction Y'], ),
-            'Yaw': (status['Direction X'], ),
-            'Roll': (status['Roll'], ),
+            'Pitch': (status['Direction Y'], curr_time),
+            'Yaw': (status['Direction X'], curr_time),
+            'Roll': (status['Roll'], curr_time),
             'Throttle': ([status['Altitude'], status['Vertical Velocity']], [target_alt, target_vel])
         }
         new_inputs = {}

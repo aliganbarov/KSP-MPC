@@ -13,8 +13,8 @@ else:
     load_file = None
 
 ctrl = Controller(load_file)
-ctrl.run_landing(mode)
-# ctrl.run_model_validation()
+# ctrl.run_landing(mode)
+ctrl.run_model_validation()
 # ctrl.run_pid_tuning('Roll')
 
 
