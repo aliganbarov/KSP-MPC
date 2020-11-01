@@ -105,10 +105,11 @@ class Controller:
         # get init status
         status = self.vessel.get_status()
         # init log handler
-        log_filename = 'logs/results/landing_demo.csv'
+        log_filename = 'logs/results/landing_somewhere.csv'
         log_handler = LogHandler(log_filename, status)
         # set controller parameters
-        self.run(self.params, TargetHandler.landing_sliding_target, TerminationHandler.landing_termination, mode)
+        self.run(self.params, TargetHandler.landing_sliding_target, TerminationHandler.landing_termination, mode,
+                 log_handler)
 
     def run_data_gathering(self, lower_alt, upper_alt, velocity):
         # get init status
@@ -200,12 +201,12 @@ class Controller:
                 controllers['Roll'].set_k_i(-0.055)
                 controllers['Roll'].set_k_d(-0.05)
         if 'Pitch' in controllers.keys():
-            if abs(status['Retrograde Y']) > 0.1 and abs(status['Vertical Velocity']) > 3:
+            if abs(status['Vertical Velocity']) > 3:
                 controllers['Pitch'].set_target_val(status['Retrograde Y'])
             else:
                 controllers['Pitch'].set_target_val(0)
         if 'Yaw' in controllers.keys():
-            if abs(status['Retrograde X']) > 0.1 and abs(status['Vertical Velocity']) > 3:
+            if abs(status['Vertical Velocity']) > 3:
                 controllers['Yaw'].set_target_val(status['Retrograde X'])
             else:
                 controllers['Yaw'].set_target_val(0)
